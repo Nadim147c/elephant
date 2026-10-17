@@ -5,10 +5,12 @@
   protoc-gen-go,
   makeWrapper,
   fd,
+  coreutils,
+  bash,
   makeWrapperArgs ? [ ],
 }:
 
-buildGo127Module {
+buildGo127Module (finalAttrs: {
   pname = "elephant";
   version = lib.trim (builtins.readFile ../cmd/elephant/version.txt);
 
@@ -36,13 +38,19 @@ buildGo127Module {
     makeWrapper
   ];
 
+  propagatedBuildInputs = [
+    fd
+    coreutils
+    bash
+  ];
+
   subPackages = [
     "cmd/elephant"
   ];
 
   postFixup = ''
     wrapProgram $out/bin/elephant \
-      --prefix PATH : ${lib.makeBinPath [ fd ]} \
+      --prefix PATH : ${lib.makeBinPath finalAttrs.propagatedBuildInputs} \
       ${lib.escapeShellArgs makeWrapperArgs}
   '';
 
@@ -53,4 +61,4 @@ buildGo127Module {
     maintainers = [ ];
     platforms = platforms.linux;
   };
-}
+})
