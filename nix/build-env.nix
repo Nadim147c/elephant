@@ -46,8 +46,7 @@ buildEnv {
         "${elephant-providers}/lib/elephant"
       ];
     })
-
-    elephant-providers
+    (elephant-providers.override { inherit excludedProviders; })
   ];
 
 }
