@@ -48,39 +48,9 @@
         elephant-providers = pkgs.callPackage ./nix/plugin.nix { };
 
         # Combined package with elephant + providers
-        elephant-with-providers = pkgs.buildEnv (finalAttrs: {
-          pname = "elephant-with-providers";
-          version = lib.trim (builtins.readFile ./cmd/elephant/version.txt);
-
-          paths =
-            let
-              clis = with pkgs; [
-                wl-clipboard
-                libqalculate
-                imagemagick
-                bluez
-              ];
-              plugins = self.packages.${pkgs.stdenv.hostPlatform.system}.elephant-providers;
-              # Use single wrapping
-              base = self.packages.${pkgs.stdenv.hostPlatform.system}.elephant.override {
-                makeWrapperArgs = [
-                  "--prefix"
-                  "PATH"
-                  ":"
-                  (lib.makeBinPath clis)
-
-                  "--set-default"
-                  "ELEPHANT_PROVIDER_DIR"
-                  "${plugins}/lib/elephant"
-                ];
-              };
-            in
-            [
-              base
-              plugins
-            ];
-
-        });
+        elephant-with-providers = pkgs.callPackage ./nix/build-env.nix {
+          inherit (self.packages.${pkgs.stdenv.hostPlatform.system}) elephant elephant-providers;
+        };
       });
 
       homeManagerModules = {

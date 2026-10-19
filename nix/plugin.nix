@@ -4,6 +4,12 @@
   protobuf,
   protoc-gen-go,
   wayland,
+  parallel,
+  excludedProviders ? [
+    "archlinuxpkgs"
+    "dnfpackages"
+    "aptpackages"
+  ],
 }:
 
 buildGo127Module (finalAttrs: {
@@ -32,54 +38,45 @@ buildGo127Module (finalAttrs: {
   nativeBuildInputs = [
     protobuf
     protoc-gen-go
-  ];
-
-  excludedProviders = [
-    "archlinuxpkgs"
-    "dnfpackages"
-    "aptpackages"
+    parallel
   ];
 
   buildPhase = ''
     runHook preBuild
 
-    echo "Building elephant providers..."
-
-    EXCLUDE_LIST="${lib.concatStringsSep " " finalAttrs.excludedProviders}"
+    EXCLUDE_LIST="${lib.concatStringsSep " " excludedProviders}"
 
     is_excluded() {
       target="$1"
       for e in $EXCLUDE_LIST; do
         [ -z "$e" ] && continue
-        if [ "$e" = "$target" ]; then
-          return 0
-        fi
+        [ "$e" = "$target" ] && return 0
       done
       return 1
     }
 
     if [ -d ./internal/providers ]; then
+      job_limit=""
+      if [ -n "$NIX_BUILD_CORES" ] && [ "$NIX_BUILD_CORES" -gt 0 ]; then
+        job_limit="$NIX_BUILD_CORES"
+      else
+        job_limit=1
+      fi
+
+      providers=""
       for dir in ./internal/providers/*; do
         [ -d "$dir" ] || continue
         provider=$(basename "$dir")
-        if is_excluded "$provider"; then
-          echo "Skipping excluded provider: $provider"
-          continue
-        fi
+        is_excluded "$provider" && continue
         set -- "$dir"/*.go
-        if [ -e "$1" ]; then
-          echo "Building provider: $provider"
-          if ! go build -buildmode=plugin -o "$provider.so" ./internal/providers/"$provider"; then
-            echo "Failed to build provider: $provider"
-            exit 1
-          fi
-          echo "Built $provider.so"
-        else
-          echo "Skipping $provider: no .go files found"
-        fi
+        [ -e "$1" ] || continue
+        providers="$providers $provider"
       done
-    else
-      echo "No providers directory found at ./internal/providers"
+
+      if [ -n "$providers" ]; then
+        echo "$providers" | xargs -n1 | parallel -j "$job_limit" \
+          'echo "Building provider: {}" && go build -buildmode=plugin -o "{}.so" ./internal/providers/"{}"' || exit 1
+      fi
     fi
 
     runHook postBuild
@@ -91,10 +88,7 @@ buildGo127Module (finalAttrs: {
     mkdir -p $out/lib/elephant/providers
 
     for so_file in *.so; do
-      if [[ -f "$so_file" ]]; then
-        cp "$so_file" "$out/lib/elephant/providers/"
-        echo "Installed provider: $so_file"
-      fi
+      [ -f "$so_file" ] && cp "$so_file" "$out/lib/elephant/providers/"
     done
 
     runHook postInstall
