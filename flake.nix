@@ -30,14 +30,11 @@
           name = "elephant-dev-shell";
           inputsFrom = [ self.packages.${pkgs.stdenv.hostPlatform.system}.elephant ];
           buildInputs = with pkgs; [
-            go
+            go_1_27
             gcc
             protobuf
             protoc-gen-go
           ];
-          shellHook = ''
-            export GOROOT="${pkgs.go}/share/go"
-          '';
         };
       });
 

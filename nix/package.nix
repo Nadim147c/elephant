@@ -4,7 +4,6 @@
   protobuf,
   protoc-gen-go,
   makeWrapper,
-  fd,
   coreutils,
   bash,
   makeWrapperArgs ? [ ],
@@ -39,7 +38,6 @@ buildGo127Module (finalAttrs: {
   ];
 
   propagatedBuildInputs = [
-    fd
     coreutils
     bash
   ];

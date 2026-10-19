@@ -1,13 +1,18 @@
 {
   lib,
   buildEnv,
-  elephant-providers,
   elephant,
-  wl-clipboard,
-  libqalculate,
-  imagemagick,
-  fd,
+  elephant-providers,
+  bash,
   bluez,
+  coreutils,
+  fd,
+  imagemagick,
+  libqalculate,
+  wl-clipboard,
+  libnotify,
+  tesseract,
+  playerctl,
   excludedProviders ? [
     "archlinuxpkgs"
     "dnfpackages"
@@ -18,16 +23,24 @@
 let
   include =
     module: packages: lib.optionals (!(builtins.elem module excludedProviders)) (lib.toList packages);
+  # This doesn't handle all use cases but good enough
   clis = [
-    fd
-    imagemagick
+    coreutils
+    bash
+    wl-clipboard
+    libnotify
   ]
+  ++ include "files" fd
   ++ include "bluetooth" bluez
   ++ include "clipboard" [
-    wl-clipboard
+    tesseract
     imagemagick
   ]
+  ++ include "todo" playerctl
+  ++ include "1password" playerctl
   ++ include "calc" libqalculate;
+
+  providers = elephant-providers.override { inherit excludedProviders; };
 in
 buildEnv {
   pname = "elephant-with-providers";
@@ -43,10 +56,10 @@ buildEnv {
 
         "--set-default"
         "ELEPHANT_PROVIDER_DIR"
-        "${elephant-providers}/lib/elephant"
+        "${providers}/lib/elephant"
       ];
     })
-    (elephant-providers.override { inherit excludedProviders; })
+    providers
   ];
 
 }
